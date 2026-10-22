@@ -32,14 +32,15 @@ SOURCES = [
 ]
 
 
-def fetch(url, want_body=True):
-    """返回 (status, headers_dict_lower, body_text)。失败抛异常。"""
+def fetch(url, max_bytes=65536):
+    """返回 (status, headers_dict_lower, body_text)。失败抛异常。
+    验流时只读 64KB 足够；拉源列表时要传大上限，否则大文件被截断丢频道。"""
     req = urllib.request.Request(url, headers={
         "User-Agent": UA, "Origin": ORIGIN,
         "Referer": "https://app.benfen.net/",
     })
     with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
-        body = r.read(65536).decode("utf-8", "ignore") if want_body else ""
+        body = r.read(max_bytes).decode("utf-8", "ignore")
         hdrs = {k.lower(): v for k, v in r.headers.items()}
         return r.status, hdrs, body
 
@@ -151,7 +152,7 @@ def main():
     per_src = {}
     for src, url in SOURCES:
         try:
-            _, _, text = fetch(url)
+            _, _, text = fetch(url, max_bytes=16_000_000)
             items = parse_m3u(text, src)
         except Exception as e:
             print(f"[{src}] 拉取失败: {e}", file=sys.stderr)
