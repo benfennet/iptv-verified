@@ -81,10 +81,23 @@ def check_segment(url):
 
 
 def verify(ch):
-    """返回 (ok, reason)。ch: dict(name, url, group, src, raw_extinf)。"""
+    """返回 (ok, reason)。ch: dict(name, url, group, src, raw_extinf)。
+    http 源先试同地址 https 版：不少源站双协议同开，列表只写了 http；
+    升 https 后能过四关的，以 https 地址收录（标准不降，库里仍是纯 https）。"""
     url = ch["url"]
-    if not url.startswith("https://"):
+    if url.startswith("http://"):
+        upgraded = "https://" + url[len("http://"):]
+        ok, _ = verify_url(upgraded)
+        if ok:
+            ch["url"] = upgraded
+            return True, "ok-upgraded"
         return False, "not-https"
+    ok, reason = verify_url(url)
+    return ok, reason
+
+
+def verify_url(url):
+    """对单个 https 地址执行存活/CORS/内容/分片四关。"""
     try:
         status, hdrs, body = fetch(url)
     except Exception:
