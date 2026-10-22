@@ -1,13 +1,13 @@
 {
   "total_checked": 2019,
-  "total_passed": 193,
+  "total_passed": 332,
   "fail_reasons": {
-    "not-https": 1069,
-    "unreachable": 615,
+    "not-https": 926,
+    "unreachable": 621,
     "not-m3u8": 114,
     "ok": 193,
-    "segment-unreachable": 1,
-    "sub-unreachable": 4,
+    "ok-upgraded": 139,
+    "sub-unreachable": 3,
     "no-cors": 22,
     "segment-invalid": 1
   },
@@ -15,17 +15,17 @@
     "Guovin": {
       "total": 1619,
       "unique": 1554,
-      "passed": 56
+      "passed": 153
     },
     "zbds": {
       "total": 529,
       "unique": 343,
-      "passed": 115
+      "passed": 147
     },
     "iptv-org-cn": {
       "total": 149,
       "unique": 90,
-      "passed": 15
+      "passed": 25
     },
     "iptv-org-hk": {
       "total": 17,
