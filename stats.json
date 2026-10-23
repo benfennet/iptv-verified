@@ -1,23 +1,23 @@
 {
   "total_checked": 1823,
-  "total_passed": 225,
-  "proxy_total": 370,
-  "proxy_only": 145,
+  "total_passed": 220,
+  "proxy_total": 344,
+  "proxy_only": 124,
   "per_source": {
     "Guovin": {
       "total": 1619,
       "unique": 1554,
-      "passed": 151
+      "passed": 149
     },
     "zbds": {
       "total": 182,
       "unique": 146,
-      "passed": 42
+      "passed": 41
     },
     "iptv-org-cn": {
       "total": 149,
       "unique": 91,
-      "passed": 25
+      "passed": 23
     },
     "iptv-org-hk": {
       "total": 17,
