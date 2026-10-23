@@ -27,6 +27,9 @@ TIMEOUT = 8
 WORKERS = 40
 LIMIT = int(os.environ.get("LIMIT", "0"))  # >0 时每个源只取前 N 条（本地试跑用）
 
+# 已证实的假台农场（一个流冒充多个频道名、实测为广告循环），聚合时直接剔除
+BLOCK_HOSTS = {"173.208.212.130:8181"}
+
 SOURCES = [
     ("Guovin", "https://cdn.jsdelivr.net/gh/Guovin/iptv-api@gd/output/result.m3u"),
     ("zbds", "https://live.zbds.top/tv/iptv4.m3u"),
@@ -314,13 +317,16 @@ def _res_rank(name):
 
 
 def dedupe(pairs):
-    """pairs: [(ch, tier)]。同名只留最好的一条：严标准 > 代理；https > http；高清优先。"""
+    """pairs: [(ch, tier)]。同名只留最好的一条：
+    严标准 > 代理；https > http；有域名的 > 裸 IP（裸 IP 多为来历不明的中转）；高清优先。"""
     best = {}
     for ch, tier in pairs:
         key = norm_name(ch["name"])
+        bare = 1 if re.match(r"\d+\.\d+\.\d+\.\d+",
+                             urlparse(ch["url"]).netloc) else 0
         rank = (0 if tier == "strict" else 1,
                 0 if ch["url"].startswith("https") else 1,
-                _res_rank(ch["name"]))
+                bare, _res_rank(ch["name"]))
         if key not in best or rank < best[key][0]:
             best[key] = (rank, ch)
     return [v[1] for v in best.values()]
@@ -353,6 +359,8 @@ def main():
             # 验证机在海外，验不出地域限制；带这类标记的国内多半播不了，直接剔除
             if "[Geo-blocked]" in it["name"] or "[Not 24/7]" in it["name"]:
                 continue
+            if urlparse(it["url"]).netloc in BLOCK_HOSTS:
+                continue
             if it["url"] not in seen:
                 seen.add(it["url"])
                 fresh.append(it)
@@ -369,6 +377,16 @@ def main():
                 per_src[ch["src"]]["passed"] += 1
             elif tier == "proxy":
                 proxy_only.append(ch)
+    # 嫌疑报告：一台服务器冒充 ≥3 个不同台名 → 疑似假台农场，列出来人工确认
+    # （不自动剔除：正规运营商也常一机多台、真台还有别名，误杀正宗的代价更大；
+    #  确认属实后把主机加进 BLOCK_HOSTS 即可）
+    from collections import defaultdict
+    by_host = defaultdict(set)
+    for ch in passed + proxy_only:
+        by_host[urlparse(ch["url"]).netloc].add(norm_name(ch["name"]))
+    suspect = {h: sorted(ns) for h, ns in by_host.items() if len(ns) >= 3}
+    if suspect:
+        print(f"嫌疑主机（待人工确认）：{suspect}", file=sys.stderr)
     all_pass = passed + proxy_only
     print(f"全验证 {len(passed)} 条，代理版另 {len(proxy_only)} 条"
           f"（合计 {len(all_pass)}/{len(all_ch)}）", file=sys.stderr)
@@ -399,6 +417,7 @@ def main():
         "proxy_total": len(all_pass),
         "proxy_only": len(all_pass) - len(passed),
         "groups": grp_counts,
+        "suspect_hosts": suspect,
         "per_source": per_src,
     }
     with open("out/stats.json", "w", encoding="utf-8") as f:
