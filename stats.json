@@ -1,30 +1,30 @@
 {
   "total_checked": 1823,
-  "total_passed": 144,
-  "proxy_total": 268,
-  "proxy_only": 124,
+  "total_passed": 157,
+  "proxy_total": 279,
+  "proxy_only": 122,
   "groups": {
     "央视": 12,
     "卫视": 23,
-    "港澳台": 11,
-    "地方台": 185,
-    "海外": 37
+    "港澳台": 8,
+    "地方台": 192,
+    "海外": 44
   },
   "per_source": {
     "Guovin": {
       "total": 1619,
       "unique": 1554,
-      "passed": 98
+      "passed": 114
     },
     "zbds": {
       "total": 182,
       "unique": 146,
-      "passed": 40
+      "passed": 42
     },
     "iptv-org-cn": {
       "total": 149,
       "unique": 91,
-      "passed": 25
+      "passed": 24
     },
     "iptv-org-hk": {
       "total": 17,
