@@ -424,6 +424,9 @@ def apply_grace(passed, proxy_only, state):
                                    "tier": tier, "fails": 0}
     keep_s, keep_p, dropped = [], [], 0
     for url, e in state.items():
+        if urlparse(url).netloc in BLOCK_HOSTS:
+            dropped += 1  # 拉黑名单高于宽限：被拉黑的源绝不许被宽限复活（2026-10-23 实测教训）
+            continue
         if url in new_state:
             continue
         f = int(e.get("fails", 0)) + 1

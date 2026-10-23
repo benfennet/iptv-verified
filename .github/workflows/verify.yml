@@ -10,6 +10,11 @@ on:
 permissions:
   contents: write
 
+# 串行化：push 与手动触发可能撞车，并发跑会同读一份旧 state、宽限计数不前进
+concurrency:
+  group: verify
+  cancel-in-progress: false
+
 jobs:
   verify:
     runs-on: ubuntu-latest
