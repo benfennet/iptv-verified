@@ -247,7 +247,7 @@ def classify(name):
             "中国教育电视台" in name or n.startswith("CETV"):
         return "央视"
     if any(k in name for k in HMT_KEYS if k != "TVB") or \
-            n.startswith("TVB") or " TVB" in name.upper():
+            re.search(r"\bTVB\b", name.upper()):
         return "港澳台"
     if "卫视" in name or any(k in name for k in WS_KIDS):
         return "卫视"
