@@ -36,6 +36,9 @@ SOURCES = [
     ("iptv-org-cn", "https://iptv-org.github.io/iptv/countries/cn.m3u"),
     ("iptv-org-hk", "https://iptv-org.github.io/iptv/countries/hk.m3u"),
     ("iptv-org-tw", "https://iptv-org.github.io/iptv/countries/tw.m3u"),
+    ("iptv-org-zho", "https://iptv-org.github.io/iptv/languages/zho.m3u"),
+    ("fanmingming", "https://raw.githubusercontent.com/fanmingming/live/main/tv/m3u/ipv6.m3u"),
+    ("yanG", "https://raw.githubusercontent.com/yanG-1989/m3u/main/Gather.m3u"),
 ]
 
 
