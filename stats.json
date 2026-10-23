@@ -1,14 +1,14 @@
 {
-  "total_checked": 1819,
-  "total_passed": 180,
-  "proxy_total": 291,
-  "proxy_only": 111,
+  "total_checked": 2040,
+  "total_passed": 209,
+  "proxy_total": 322,
+  "proxy_only": 113,
   "groups": {
-    "央视": 10,
+    "央视": 13,
     "卫视": 22,
     "港澳台": 8,
-    "地方台": 205,
-    "海外": 46
+    "地方台": 215,
+    "海外": 64
   },
   "suspect_hosts": {
     "ali-m-l.cztv.com": [
@@ -118,6 +118,7 @@
     ],
     "0472.org": [
       "CGTN纪录",
+      "CGTN英语",
       "CGTN西语",
       "CGTN阿语"
     ],
@@ -143,6 +144,11 @@
       "航拍中国第二季",
       "飞碟之谜02"
     ],
+    "h5cul1yar48um3t.wcetv.com": [
+      "GUANGDONGSATELLITETV",
+      "GUANGDONGTVAMERICA",
+      "WCETVDIGITALCHANNEL31.8"
+    ],
     "video10.qtv.com.cn": [
       "QTV1",
       "QTV2",
@@ -150,6 +156,31 @@
       "QTV4",
       "QTV5",
       "QTV6"
+    ],
+    "live.ntdtv.com": [
+      "NTDTVASIAPACIFIC",
+      "NTDTVCANADA",
+      "NTDTVCANADAWEST",
+      "NTDTVCHINA"
+    ],
+    "fastlive.cctvplus.com": [
+      "CGTNGLOBALBIZ",
+      "CHINATRAVEL",
+      "DISCOVERINGCHINA"
+    ],
+    "cdn.ttvb.eu.org": [
+      "「斗鱼」FIFA",
+      "「斗鱼」JJ斗地主",
+      "「斗鱼」QQ飞车•手游",
+      "「斗鱼」云顶之弈",
+      "「斗鱼」王者荣耀𝟙",
+      "「斗鱼」王者荣耀𝟚",
+      "「斗鱼」穿越火线𝟙",
+      "「斗鱼」第五人格",
+      "「斗鱼」绝地求生",
+      "「斗鱼」英雄联盟𝟙",
+      "「斗鱼」跑跑卡丁车",
+      "「斗鱼」跑跑卡丁车•手游"
     ],
     "120.76.248.139": [
       "CCTV13",
@@ -209,6 +240,7 @@
     ],
     "110.153.180.106:55555": [
       "XINJIANGTV2",
+      "伊犁哈萨克",
       "伊犁经济法制",
       "伊犁维吾尔"
     ],
@@ -246,23 +278,18 @@
       "GOLDENJADE",
       "JADE",
       "MEIAHMOVIECHANNEL"
-    ],
-    "111.59.139.85:11888": [
-      "EBCFOREIGNMOVIE",
-      "PTS3",
-      "SJTV"
     ]
   },
   "grace_kept": {
-    "strict": 6,
-    "proxy": 8
+    "strict": 1,
+    "proxy": 6
   },
-  "dropped_2strikes": 0,
+  "dropped_2strikes": 9,
   "per_source": {
     "Guovin": {
       "total": 1619,
       "unique": 1550,
-      "passed": 150
+      "passed": 151
     },
     "zbds": {
       "total": 182,
@@ -272,7 +299,7 @@
     "iptv-org-cn": {
       "total": 149,
       "unique": 91,
-      "passed": 23
+      "passed": 24
     },
     "iptv-org-hk": {
       "total": 17,
@@ -283,6 +310,21 @@
       "total": 31,
       "unique": 23,
       "passed": 7
+    },
+    "iptv-org-zho": {
+      "total": 219,
+      "unique": 35,
+      "passed": 20
+    },
+    "fanmingming": {
+      "total": 82,
+      "unique": 63,
+      "passed": 1
+    },
+    "yanG": {
+      "total": 123,
+      "unique": 123,
+      "passed": 12
     }
   }
 }
