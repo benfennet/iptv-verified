@@ -93,12 +93,28 @@ def segment_flags(url):
         return False, False
 
 
+def variant_info(master_body):
+    """从主播放列表解析最佳变体的 (高度, 码率)。挑流与去重用真参数，不靠台名猜。"""
+    best_h, best_bw = 0, 0
+    for m in re.finditer(r"#EXT-X-STREAM-INF:([^\n]+)", master_body):
+        attrs = m.group(1)
+        rm = re.search(r"RESOLUTION=(\d+)x(\d+)", attrs)
+        bm = re.search(r"BANDWIDTH=(\d+)", attrs)
+        h = int(rm.group(2)) if rm else 0
+        bw = int(bm.group(1)) if bm else 0
+        if h > best_h or (h == best_h and bw > best_bw):
+            best_h, best_bw = h, bw
+    return best_h, best_bw
+
+
 def probe(url):
     """一次探测，把每关结果都记下来，供两套标准分别判定。"""
     d = {"alive": False, "cors": False, "m3u8": False,
          "sub_ok": True, "sub_cors": True,
          "init_ok": True, "init_cors": True,
-         "seg_ok": False, "seg_cors": False}
+         "seg_ok": False, "seg_cors": False,
+         "seg2_ok": True, "seg2_cors": True,
+         "resh": 0, "bw": 0}
     try:
         status, hdrs, body = fetch(url)
     except Exception:
@@ -110,8 +126,9 @@ def probe(url):
     if "#EXTM3U" not in body[:64]:
         return d
     d["m3u8"] = True
-    # 主播放列表：深入一层
+    # 主播放列表：深入一层（并记下最佳变体的真实分辨率/码率）
     if "#EXT-X-STREAM-INF" in body:
+        d["resh"], d["bw"] = variant_info(body)
         sub = first_media_line(body, url)
         if not sub:
             d["sub_ok"] = False
@@ -132,11 +149,18 @@ def probe(url):
         d["init_ok"], d["init_cors"] = segment_flags(init)
         if not d["init_ok"]:
             return d
-    # 第一个媒体分片
-    seg = first_media_line(body, url)
-    if not seg:
+    # 首尾两个媒体分片都验：只验第一片会放过「头活尾死」的假活，
+    # 尾片是最新分片，拉得到才证明这条流此刻真的活着
+    seg_lines = [ln.strip() for ln in body.splitlines()
+                 if ln.strip() and not ln.startswith("#")]
+    if not seg_lines:
         return d
-    d["seg_ok"], d["seg_cors"] = segment_flags(seg)
+    from urllib.parse import urljoin as _uj
+    d["seg_ok"], d["seg_cors"] = segment_flags(_uj(url, seg_lines[0]))
+    if not d["seg_ok"]:
+        return d
+    if len(seg_lines) > 1:
+        d["seg2_ok"], d["seg2_cors"] = segment_flags(_uj(url, seg_lines[-1]))
     return d
 
 
@@ -144,13 +168,14 @@ def pass_strict(d):
     """全验证版：https 前提下（由 verify 保证）每关都要 CORS。"""
     return (d["alive"] and d["cors"] and d["m3u8"] and d["sub_ok"]
             and d["sub_cors"] and d["init_ok"] and d["init_cors"]
-            and d["seg_ok"] and d["seg_cors"])
+            and d["seg_ok"] and d["seg_cors"]
+            and d["seg2_ok"] and d["seg2_cors"])
 
 
 def pass_loose(d):
-    """本地代理版：只要求活着、列表有效、分片可达。"""
+    """本地代理版：只要求活着、列表有效、首尾分片可达。"""
     return (d["alive"] and d["m3u8"] and d["sub_ok"]
-            and d["init_ok"] and d["seg_ok"])
+            and d["init_ok"] and d["seg_ok"] and d["seg2_ok"])
 
 
 def verify(ch):
@@ -163,15 +188,25 @@ def verify(ch):
         d = probe(up)
         if pass_strict(d):
             ch["url"] = up
+            ch["_resh"], ch["_bw"] = d["resh"], d["bw"]
             return "strict"
         if pass_loose(d):
             ch["url"] = up
+            ch["_resh"], ch["_bw"] = d["resh"], d["bw"]
             return "proxy"
-        return "proxy" if pass_loose(probe(url)) else None
+        d = probe(url)
+        if pass_loose(d):
+            ch["_resh"], ch["_bw"] = d["resh"], d["bw"]
+            return "proxy"
+        return None
     d = probe(url)
     if pass_strict(d):
+        ch["_resh"], ch["_bw"] = d["resh"], d["bw"]
         return "strict"
-    return "proxy" if pass_loose(d) else None
+    if pass_loose(d):
+        ch["_resh"], ch["_bw"] = d["resh"], d["bw"]
+        return "proxy"
+    return None
 
 
 def parse_m3u(text, src):
@@ -311,17 +346,21 @@ def norm_name(name):
         n = n2
 
 
-def _res_rank(name):
-    n = name.upper()
-    for i, k in enumerate(("2160", "4K", "1080", "720", "576", "480")):
+def _eff_height(ch):
+    """有效清晰度（越高越好）：优先主列表的真实分辨率，没有就按台名标记估，再没有按标清。"""
+    if ch.get("_resh"):
+        return ch["_resh"]
+    n = ch["name"].upper()
+    for k, h in (("2160", 2160), ("4K", 2160), ("1080", 1080),
+                 ("720", 720), ("576", 576), ("480", 480)):
         if k in n:
-            return i
-    return 9
+            return h
+    return 360
 
 
 def dedupe(pairs):
     """pairs: [(ch, tier)]。同名只留最好的一条：
-    严标准 > 代理；https > http；有域名的 > 裸 IP（裸 IP 多为来历不明的中转）；高清优先。"""
+    严标准 > 代理；https > http；有域名的 > 裸 IP（裸 IP 多为来历不明的中转）；清晰度高优先（真参数）。"""
     best = {}
     for ch, tier in pairs:
         key = norm_name(ch["name"])
@@ -329,7 +368,7 @@ def dedupe(pairs):
                              urlparse(ch["url"]).netloc) else 0
         rank = (0 if tier == "strict" else 1,
                 0 if ch["url"].startswith("https") else 1,
-                bare, _res_rank(ch["name"]))
+                bare, -_eff_height(ch))
         if key not in best or rank < best[key][0]:
             best[key] = (rank, ch)
     return [v[1] for v in best.values()]
