@@ -1,14 +1,14 @@
 {
   "total_checked": 2040,
-  "total_passed": 209,
-  "proxy_total": 322,
-  "proxy_only": 113,
+  "total_passed": 215,
+  "proxy_total": 327,
+  "proxy_only": 112,
   "groups": {
-    "央视": 13,
+    "央视": 15,
     "卫视": 22,
     "港澳台": 8,
-    "地方台": 215,
-    "海外": 64
+    "地方台": 220,
+    "海外": 62
   },
   "suspect_hosts": {
     "ali-m-l.cztv.com": [
@@ -33,16 +33,15 @@
       "浙江钱江",
       "浙江钱江都市"
     ],
-    "txmov2.a.kwimgs.com": [
-      "1987年春晚",
-      "1988年春晚",
-      "1989年春晚",
-      "湖南卫视"
-    ],
     "tencentplay.gztv.com": [
       "南国都市",
       "广州新闻",
       "广州综合"
+    ],
+    "hzcm-live.media.hugd.com": [
+      "湖州公共民生",
+      "湖州文化娱乐",
+      "湖州新闻综合"
     ],
     "l.cztvcloud.com": [
       "上虞新闻综合",
@@ -122,15 +121,8 @@
       "CGTN西语",
       "CGTN阿语"
     ],
-    "jsmov2.a.yximgs.com": [
-      "倩女幽魂人间道",
-      "倩女幽魂妖魔道",
-      "倩女幽魂道道道",
-      "龙门飞甲"
-    ],
     "stream.hrbtv.net": [
       "HARBINCOMPREHENSIVENEWSCHANNEL",
-      "HARBINMOVIECHANNEL",
       "哈尔滨娱乐",
       "哈尔滨影视",
       "哈尔滨新闻综合",
@@ -173,14 +165,21 @@
       "「斗鱼」JJ斗地主",
       "「斗鱼」QQ飞车•手游",
       "「斗鱼」云顶之弈",
-      "「斗鱼」王者荣耀𝟙",
+      "「斗鱼」和平精英",
       "「斗鱼」王者荣耀𝟚",
       "「斗鱼」穿越火线𝟙",
       "「斗鱼」第五人格",
       "「斗鱼」绝地求生",
       "「斗鱼」英雄联盟𝟙",
       "「斗鱼」跑跑卡丁车",
-      "「斗鱼」跑跑卡丁车•手游"
+      "「斗鱼」跑跑卡丁车•手游",
+      "「斗鱼」金铲铲之战"
+    ],
+    "74.91.26.218:82": [
+      "CCTV1",
+      "CCTV12",
+      "CCTV3",
+      "CCTV9"
     ],
     "120.76.248.139": [
       "CCTV13",
@@ -223,7 +222,6 @@
       "河北农民",
       "浙江生活",
       "海南新闻",
-      "灌阳新闻综合",
       "衡水公共",
       "辽宁都市",
       "铜陵新闻综合",
@@ -281,10 +279,10 @@
     ]
   },
   "grace_kept": {
-    "strict": 1,
-    "proxy": 6
+    "strict": 11,
+    "proxy": 8
   },
-  "dropped_2strikes": 9,
+  "dropped_2strikes": 4,
   "per_source": {
     "Guovin": {
       "total": 1619,
@@ -294,7 +292,7 @@
     "zbds": {
       "total": 182,
       "unique": 146,
-      "passed": 42
+      "passed": 37
     },
     "iptv-org-cn": {
       "total": 149,
@@ -314,7 +312,7 @@
     "iptv-org-zho": {
       "total": 219,
       "unique": 35,
-      "passed": 20
+      "passed": 21
     },
     "fanmingming": {
       "total": 82,
@@ -324,7 +322,7 @@
     "yanG": {
       "total": 123,
       "unique": 123,
-      "passed": 12
+      "passed": 13
     }
   }
 }
