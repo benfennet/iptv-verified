@@ -78,17 +78,33 @@ def tag_uri(playlist, base):
     return None
 
 
+def _looks_like_media(b):
+    """分片内容嗅探：回 200 不等于真分片，拿网页/报错冒充的要露馅。
+    TS 看同步字节 0x47；fMP4 看盒子类型；音频流看 ADTS/MP3 同步头。"""
+    if not b:
+        return False
+    if b[0] == 0x47:
+        return True
+    if len(b) >= 8 and b[4:8] in (b"ftyp", b"styp", b"moof", b"sidx"):
+        return True
+    if b[:3] == b"ID3" or (len(b) >= 2 and b[0] == 0xFF
+                           and (b[1] & 0xE0) == 0xE0):
+        return True
+    return False
+
+
 def segment_flags(url):
-    """探一个分片/初始化段，返回 (可达, 带CORS)。不读完整个分片。"""
+    """探一个分片/初始化段，返回 (可达且内容像真分片, 带CORS)。"""
     req = urllib.request.Request(url, headers={
         "User-Agent": UA, "Origin": ORIGIN,
         "Referer": "https://app.benfen.net/", "Range": "bytes=0-1023",
     })
     try:
         with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
-            r.read(1024)
+            data = r.read(1024)
             hdrs = {k.lower(): v for k, v in r.headers.items()}
-            return r.status in (200, 206), has_cors(hdrs)
+            return (r.status in (200, 206) and _looks_like_media(data),
+                    has_cors(hdrs))
     except Exception:
         return False, False
 
