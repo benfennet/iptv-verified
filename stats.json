@@ -1,32 +1,23 @@
 {
-  "total_checked": 2007,
-  "total_passed": 327,
-  "fail_reasons": {
-    "not-https": 917,
-    "unreachable": 618,
-    "not-m3u8": 114,
-    "ok": 187,
-    "ok-upgraded": 140,
-    "sub-unreachable": 5,
-    "no-cors": 22,
-    "segment-invalid": 1,
-    "segment-unreachable": 3
-  },
+  "total_checked": 1823,
+  "total_passed": 225,
+  "proxy_total": 370,
+  "proxy_only": 145,
   "per_source": {
     "Guovin": {
       "total": 1619,
       "unique": 1554,
-      "passed": 149
+      "passed": 151
     },
     "zbds": {
-      "total": 503,
-      "unique": 331,
-      "passed": 147
+      "total": 182,
+      "unique": 146,
+      "passed": 42
     },
     "iptv-org-cn": {
       "total": 149,
-      "unique": 90,
-      "passed": 24
+      "unique": 91,
+      "passed": 25
     },
     "iptv-org-hk": {
       "total": 17,
