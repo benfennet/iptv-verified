@@ -342,6 +342,41 @@ def with_group(extinf, group):
     return extinf
 
 
+def load_state():
+    """读上轮状态（工作流从 gh-pages 签出到 prev/state.json）。没有就当首轮。"""
+    p = os.environ.get("STATE_IN", "prev/state.json")
+    try:
+        with open(p, encoding="utf-8") as f:
+            return json.load(f).get("channels", {})
+    except Exception:
+        return {}
+
+
+def apply_grace(passed, proxy_only, state):
+    """两轮淘汰制：上轮在册、本轮没通过的先宽限保留一轮（fails=1），
+    连续两轮没通过（fails>=2）才下架。本轮通过的 fails 清零。
+    返回 (宽限严版, 宽限代理版, 本轮下架数, 新状态)。"""
+    new_state = {}
+    for tier, lst in (("strict", passed), ("proxy", proxy_only)):
+        for c in lst:
+            new_state[c["url"]] = {"name": c["name"], "extinf": c["extinf"],
+                                   "tier": tier, "fails": 0}
+    keep_s, keep_p, dropped = [], [], 0
+    for url, e in state.items():
+        if url in new_state:
+            continue
+        f = int(e.get("fails", 0)) + 1
+        if f >= 2:
+            dropped += 1
+            continue
+        ch = {"name": e["name"], "url": url, "extinf": e["extinf"],
+              "group": "", "src": "grace"}
+        (keep_s if e.get("tier") == "strict" else keep_p).append(ch)
+        new_state[url] = {"name": e["name"], "extinf": e["extinf"],
+                          "tier": e.get("tier", "proxy"), "fails": f}
+    return keep_s, keep_p, dropped, new_state
+
+
 def main():
     all_ch, seen = [], set()
     per_src = {}
@@ -387,6 +422,14 @@ def main():
     suspect = {h: sorted(ns) for h, ns in by_host.items() if len(ns) >= 3}
     if suspect:
         print(f"嫌疑主机（待人工确认）：{suspect}", file=sys.stderr)
+    # 两轮淘汰制：合并上轮状态，本轮没过的先宽限一轮
+    g_strict, g_proxy, dropped2, new_state = apply_grace(
+        passed, proxy_only, load_state())
+    if g_strict or g_proxy or dropped2:
+        print(f"两轮淘汰：宽限保留 严 {len(g_strict)} / 代理 {len(g_proxy)}，"
+              f"连续两轮失败下架 {dropped2}", file=sys.stderr)
+    passed = passed + g_strict
+    proxy_only = proxy_only + g_proxy
     all_pass = passed + proxy_only
     print(f"全验证 {len(passed)} 条，代理版另 {len(proxy_only)} 条"
           f"（合计 {len(all_pass)}/{len(all_ch)}）", file=sys.stderr)
@@ -418,10 +461,17 @@ def main():
         "proxy_only": len(all_pass) - len(passed),
         "groups": grp_counts,
         "suspect_hosts": suspect,
+        "grace_kept": {"strict": len(g_strict), "proxy": len(g_proxy)},
+        "dropped_2strikes": dropped2,
         "per_source": per_src,
     }
     with open("out/stats.json", "w", encoding="utf-8") as f:
         json.dump(stats, f, ensure_ascii=False, indent=2)
+    import datetime as _dt
+    with open("out/state.json", "w", encoding="utf-8") as f:
+        json.dump({"run": _dt.datetime.now(
+            _dt.timezone(_dt.timedelta(hours=8))).isoformat(),
+            "channels": new_state}, f, ensure_ascii=False)
 
     import datetime
     now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8)))
@@ -443,6 +493,7 @@ table{{border-collapse:collapse}}td,th{{border:1px solid #ccc;padding:4px 12px}}
 <p><b>自有源 · 代理版</b>（配合本机代理使用）：只验活着、列表有效、分片可达，http 与无跨域许可的也收，台数更多。<br>
 订阅地址：<code>https://benfennet.github.io/iptv-verified/proxy.m3u</code></p>
 <p>最近验证：{now.strftime('%Y-%m-%d %H:%M')}（北京时间）· 共验 {len(all_ch)} 条，全验证通过 {len(passed)} 条，代理版共 {len(all_pass)} 条。</p>
+<p>名单采用两轮淘汰制：频道要连续两轮验证失败才下架，偶发抖动不会让好台消失。</p>
 <table><tr><th>来源</th><th>收录</th><th>通过</th></tr>{rows}</table>
 <p>每 6 小时自动重新验证。验证在境外节点执行，个别频道可能有地域限制。</p>
 </body></html>""")
