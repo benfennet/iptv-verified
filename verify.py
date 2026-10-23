@@ -261,9 +261,9 @@ table{{border-collapse:collapse}}td,th{{border:1px solid #ccc;padding:4px 12px}}
 </head><body>
 <h1>加强版 IPTV 源</h1>
 <p>多源聚合，逐条验证后出两份名单：</p>
-<p><b>全验证版</b>（网页直连）：https、存活、跨域许可、播放列表与分片可达，四关全过才收录。<br>
+<p><b>自有源 · 直连版</b>（全验证，网页直连）：https、存活、跨域许可、播放列表与分片可达，四关全过才收录。<br>
 订阅地址：<code>https://benfennet.github.io/iptv-verified/verified.m3u</code></p>
-<p><b>本地代理版</b>（配合本机代理使用）：只验活着、列表有效、分片可达，http 与无跨域许可的也收，台数更多。<br>
+<p><b>自有源 · 代理版</b>（配合本机代理使用）：只验活着、列表有效、分片可达，http 与无跨域许可的也收，台数更多。<br>
 订阅地址：<code>https://benfennet.github.io/iptv-verified/proxy.m3u</code></p>
 <p>最近验证：{now.strftime('%Y-%m-%d %H:%M')}（北京时间）· 共验 {len(all_ch)} 条，全验证通过 {len(passed)} 条，代理版共 {len(all_pass)} 条。</p>
 <table><tr><th>来源</th><th>收录</th><th>通过</th></tr>{rows}</table>
