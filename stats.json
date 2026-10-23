@@ -1,14 +1,14 @@
 {
   "total_checked": 1819,
-  "total_passed": 177,
-  "proxy_total": 268,
-  "proxy_only": 91,
+  "total_passed": 170,
+  "proxy_total": 273,
+  "proxy_only": 103,
   "groups": {
-    "央视": 8,
-    "卫视": 10,
+    "央视": 10,
+    "卫视": 22,
     "港澳台": 8,
-    "地方台": 196,
-    "海外": 46
+    "地方台": 192,
+    "海外": 41
   },
   "suspect_hosts": {
     "ali-m-l.cztv.com": [
@@ -105,12 +105,6 @@
       "苏州生活资讯",
       "苏州社会经济"
     ],
-    "m3u8.channel.dzsm.com": [
-      "剑阁综合",
-      "广元公共",
-      "广元综合",
-      "朝天综合"
-    ],
     "play.kankanlive.com": [
       "ANDOTV",
       "嘉峪关综合",
@@ -153,13 +147,26 @@
       "QTV2",
       "QTV3",
       "QTV4",
-      "QTV5",
       "QTV6"
     ],
-    "74.91.26.218:82": [
-      "CCTV12",
-      "CCTV3",
-      "CCTV9"
+    "120.76.248.139": [
+      "CCTV13",
+      "CCTV5+",
+      "CETV1",
+      "东南卫视",
+      "云南卫视",
+      "北京卫视",
+      "山东卫视",
+      "广东卫视",
+      "广西卫视",
+      "河北卫视",
+      "海南卫视",
+      "深圳卫视",
+      "湖北卫视",
+      "甘肃卫视",
+      "西藏卫视",
+      "青海卫视",
+      "黑龙江卫视"
     ],
     "r.jdshipin.com": [
       "凤凰资讯",
@@ -173,7 +180,6 @@
       "三明新闻综合",
       "六安公共",
       "六安新闻综合",
-      "武汉一台新闻综合",
       "河北农民",
       "浙江生活",
       "海南新闻",
@@ -193,7 +199,6 @@
       "营山电视台"
     ],
     "110.153.180.106:55555": [
-      "XINJIANGTV2",
       "伊犁哈萨克",
       "伊犁经济法制",
       "伊犁维吾尔"
@@ -232,28 +237,28 @@
       "GOLDENJADE",
       "JADE",
       "MEIAHMOVIECHANNEL"
-    ],
-    "111.59.139.85:11888": [
-      "EBCFOREIGNMOVIE",
-      "PTS3",
-      "SJTV"
     ]
   },
+  "grace_kept": {
+    "strict": 0,
+    "proxy": 0
+  },
+  "dropped_2strikes": 0,
   "per_source": {
     "Guovin": {
       "total": 1619,
       "unique": 1550,
-      "passed": 152
+      "passed": 151
     },
     "zbds": {
       "total": 182,
       "unique": 146,
-      "passed": 41
+      "passed": 39
     },
     "iptv-org-cn": {
       "total": 149,
       "unique": 91,
-      "passed": 25
+      "passed": 21
     },
     "iptv-org-hk": {
       "total": 17,
