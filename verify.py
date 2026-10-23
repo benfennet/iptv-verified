@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
-"""加强版 IPTV 源验证器。
+"""加强版 IPTV 源验证器（双轨）。
 
-从多个上游聚合频道，逐条按「网页能播」标准验证，只保留全部通过的：
-  1) 流地址必须是 https（否则浏览器混合内容拦截）
-  2) 播放列表存活：带 Origin 请求返回 200，且响应带 Access-Control-Allow-Origin
-  3) 内容是有效 m3u8（#EXTM3U 开头）；主列表则再深入一层子列表同样验证
-  4) 第一个媒体分片同样 200 + 带 CORS
-产物：out/verified.m3u、out/stats.json。
+从多个上游聚合频道，逐条探测后按两套标准各出一份名单：
+  · 全验证版 verified.m3u ——「网页能播」严标准，四关全过才收：
+    1) https（http 先试同址 https 升级，能升则升）
+    2) 播放列表存活：带 Origin 请求返回 200，且响应带跨域许可 CORS
+    3) 内容是有效 m3u8（#EXTM3U 开头）；主列表深入一层子列表同样验证
+    4) 第一个媒体分片（及 fMP4 初始化分片）同样 200 + 带 CORS
+  · 本地代理版 proxy.m3u —— 给开了本机代理的用户：代理会补 CORS、代取 http，
+    故只验「活着 + 列表有效 + 分片可达」，http 与无 CORS 照收。
+    名单为全集（严标准通过的也在内，地址用升级后的 https）。
+产物：out/verified.m3u、out/proxy.m3u、out/stats.json、out/index.html。
 """
 import concurrent.futures as cf
 import json
@@ -68,76 +72,100 @@ def tag_uri(playlist, base):
     return None
 
 
-def check_segment(url):
-    """分片验证：只要状态与 CORS，不读完整个分片。"""
+def segment_flags(url):
+    """探一个分片/初始化段，返回 (可达, 带CORS)。不读完整个分片。"""
     req = urllib.request.Request(url, headers={
         "User-Agent": UA, "Origin": ORIGIN,
         "Referer": "https://app.benfen.net/", "Range": "bytes=0-1023",
     })
-    with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
-        r.read(1024)
-        hdrs = {k.lower(): v for k, v in r.headers.items()}
-        return r.status in (200, 206) and has_cors(hdrs)
+    try:
+        with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
+            r.read(1024)
+            hdrs = {k.lower(): v for k, v in r.headers.items()}
+            return r.status in (200, 206), has_cors(hdrs)
+    except Exception:
+        return False, False
 
 
-def verify(ch):
-    """返回 (ok, reason)。ch: dict(name, url, group, src, raw_extinf)。
-    http 源先试同地址 https 版：不少源站双协议同开，列表只写了 http；
-    升 https 后能过四关的，以 https 地址收录（标准不降，库里仍是纯 https）。"""
-    url = ch["url"]
-    if url.startswith("http://"):
-        upgraded = "https://" + url[len("http://"):]
-        ok, _ = verify_url(upgraded)
-        if ok:
-            ch["url"] = upgraded
-            return True, "ok-upgraded"
-        return False, "not-https"
-    ok, reason = verify_url(url)
-    return ok, reason
-
-
-def verify_url(url):
-    """对单个 https 地址执行存活/CORS/内容/分片四关。"""
+def probe(url):
+    """一次探测，把每关结果都记下来，供两套标准分别判定。"""
+    d = {"alive": False, "cors": False, "m3u8": False,
+         "sub_ok": True, "sub_cors": True,
+         "init_ok": True, "init_cors": True,
+         "seg_ok": False, "seg_cors": False}
     try:
         status, hdrs, body = fetch(url)
     except Exception:
-        return False, "unreachable"
+        return d
     if status != 200:
-        return False, "bad-status"
-    if not has_cors(hdrs):
-        return False, "no-cors"
+        return d
+    d["alive"] = True
+    d["cors"] = has_cors(hdrs)
     if "#EXTM3U" not in body[:64]:
-        return False, "not-m3u8"
+        return d
+    d["m3u8"] = True
     # 主播放列表：深入一层
     if "#EXT-X-STREAM-INF" in body:
         sub = first_media_line(body, url)
         if not sub:
-            return False, "empty-master"
+            d["sub_ok"] = False
+            return d
         try:
             s2, h2, b2 = fetch(sub)
         except Exception:
-            return False, "sub-unreachable"
-        if s2 != 200 or not has_cors(h2) or "#EXTM3U" not in b2[:64]:
-            return False, "sub-invalid"
+            d["sub_ok"] = False
+            return d
+        if s2 != 200 or "#EXTM3U" not in b2[:64]:
+            d["sub_ok"] = False
+            return d
+        d["sub_cors"] = has_cors(h2)
         url, body = sub, b2
     # 初始化分片（fMP4）
     init = tag_uri(body, url)
     if init:
-        try:
-            if not check_segment(init):
-                return False, "init-invalid"
-        except Exception:
-            return False, "init-unreachable"
+        d["init_ok"], d["init_cors"] = segment_flags(init)
+        if not d["init_ok"]:
+            return d
     # 第一个媒体分片
     seg = first_media_line(body, url)
     if not seg:
-        return False, "no-segment"
-    try:
-        if not check_segment(seg):
-            return False, "segment-invalid"
-    except Exception:
-        return False, "segment-unreachable"
-    return True, "ok"
+        return d
+    d["seg_ok"], d["seg_cors"] = segment_flags(seg)
+    return d
+
+
+def pass_strict(d):
+    """全验证版：https 前提下（由 verify 保证）每关都要 CORS。"""
+    return (d["alive"] and d["cors"] and d["m3u8"] and d["sub_ok"]
+            and d["sub_cors"] and d["init_ok"] and d["init_cors"]
+            and d["seg_ok"] and d["seg_cors"])
+
+
+def pass_loose(d):
+    """本地代理版：只要求活着、列表有效、分片可达。"""
+    return (d["alive"] and d["m3u8"] and d["sub_ok"]
+            and d["init_ok"] and d["seg_ok"])
+
+
+def verify(ch):
+    """返回 'strict'（全验证）/ 'proxy'（仅代理版）/ None。
+    http 源先探同址 https：能严过最好，次之宽过也以 https 收进代理版；
+    https 完全不通再探 http 原址的宽标准。"""
+    url = ch["url"]
+    if url.startswith("http://"):
+        up = "https://" + url[len("http://"):]
+        d = probe(up)
+        if pass_strict(d):
+            ch["url"] = up
+            return "strict"
+        if pass_loose(d):
+            ch["url"] = up
+            return "proxy"
+        return "proxy" if pass_loose(probe(url)) else None
+    d = probe(url)
+    if pass_strict(d):
+        return "strict"
+    return "proxy" if pass_loose(d) else None
 
 
 def parse_m3u(text, src):
@@ -185,25 +213,34 @@ def main():
         print(f"[{src}] 收录 {len(items)} 条，去重后 {len(fresh)} 条", file=sys.stderr)
 
     print(f"共 {len(all_ch)} 条待验证，并发 {WORKERS}", file=sys.stderr)
-    passed, reasons = [], {}
+    passed, proxy_only = [], []
     with cf.ThreadPoolExecutor(max_workers=WORKERS) as ex:
-        for ch, (ok, reason) in zip(all_ch, ex.map(verify, all_ch)):
-            reasons[reason] = reasons.get(reason, 0) + 1
-            if ok:
+        for ch, tier in zip(all_ch, ex.map(verify, all_ch)):
+            if tier == "strict":
                 passed.append(ch)
                 per_src[ch["src"]]["passed"] += 1
-    print(f"通过 {len(passed)}/{len(all_ch)}；失败分布 {reasons}", file=sys.stderr)
+            elif tier == "proxy":
+                proxy_only.append(ch)
+    all_pass = passed + proxy_only
+    print(f"全验证 {len(passed)} 条，代理版另 {len(proxy_only)} 条"
+          f"（合计 {len(all_pass)}/{len(all_ch)}）", file=sys.stderr)
 
     passed.sort(key=lambda c: (c["group"], c["name"]))
+    all_pass.sort(key=lambda c: (c["group"], c["name"]))
     os.makedirs("out", exist_ok=True)
     with open("out/verified.m3u", "w", encoding="utf-8") as f:
         f.write('#EXTM3U x-tvg-url=""\n')
         for ch in passed:
             f.write(ch["extinf"] + "\n" + ch["url"] + "\n")
+    with open("out/proxy.m3u", "w", encoding="utf-8") as f:
+        f.write('#EXTM3U x-tvg-url=""\n')
+        for ch in all_pass:
+            f.write(ch["extinf"] + "\n" + ch["url"] + "\n")
     stats = {
         "total_checked": len(all_ch),
         "total_passed": len(passed),
-        "fail_reasons": reasons,
+        "proxy_total": len(all_pass),
+        "proxy_only": len(proxy_only),
         "per_source": per_src,
     }
     with open("out/stats.json", "w", encoding="utf-8") as f:
@@ -223,9 +260,12 @@ def main():
 table{{border-collapse:collapse}}td,th{{border:1px solid #ccc;padding:4px 12px}}code{{background:#f2f2f2;padding:2px 6px}}</style>
 </head><body>
 <h1>加强版 IPTV 源</h1>
-<p>多源聚合，逐条按「网页能播」验证：https、存活、跨域许可、播放列表与分片可达，四关全过才收录。</p>
-<p>订阅地址：<code>https://benfennet.github.io/iptv-verified/verified.m3u</code></p>
-<p>最近验证：{now.strftime('%Y-%m-%d %H:%M')}（北京时间）· 共验 {len(all_ch)} 条，通过 {len(passed)} 条。</p>
+<p>多源聚合，逐条验证后出两份名单：</p>
+<p><b>全验证版</b>（网页直连）：https、存活、跨域许可、播放列表与分片可达，四关全过才收录。<br>
+订阅地址：<code>https://benfennet.github.io/iptv-verified/verified.m3u</code></p>
+<p><b>本地代理版</b>（配合本机代理使用）：只验活着、列表有效、分片可达，http 与无跨域许可的也收，台数更多。<br>
+订阅地址：<code>https://benfennet.github.io/iptv-verified/proxy.m3u</code></p>
+<p>最近验证：{now.strftime('%Y-%m-%d %H:%M')}（北京时间）· 共验 {len(all_ch)} 条，全验证通过 {len(passed)} 条，代理版共 {len(all_pass)} 条。</p>
 <table><tr><th>来源</th><th>收录</th><th>通过</th></tr>{rows}</table>
 <p>每 6 小时自动重新验证。验证在境外节点执行，个别频道可能有地域限制。</p>
 </body></html>""")
