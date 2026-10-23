@@ -1,13 +1,13 @@
 {
   "total_checked": 2208,
-  "total_passed": 298,
-  "proxy_total": 444,
+  "total_passed": 299,
+  "proxy_total": 445,
   "proxy_only": 146,
   "groups": {
     "央视": 17,
     "卫视": 25,
     "港澳台": 8,
-    "地方台": 340,
+    "地方台": 341,
     "海外": 54
   },
   "suspect_hosts": {
@@ -106,12 +106,6 @@
       "苏州文化生活",
       "苏州生活资讯",
       "苏州社会经济"
-    ],
-    "m3u8.channel.dzsm.com": [
-      "剑阁综合",
-      "广元公共",
-      "广元综合",
-      "朝天综合"
     ],
     "play.kankanlive.com": [
       "ANDOTV",
@@ -292,7 +286,6 @@
       "足球频道"
     ],
     "gmxw.7766.org:808": [
-      "CCTV15",
       "CCTV16",
       "CCTV5",
       "安徽卫视"
@@ -321,7 +314,6 @@
       "延边2",
       "柳河",
       "汪清",
-      "汪清综合",
       "磐石",
       "辉南新闻",
       "辉南新闻综合",
@@ -350,20 +342,20 @@
     ]
   },
   "grace_kept": {
-    "strict": 18,
-    "proxy": 49
+    "strict": 24,
+    "proxy": 51
   },
   "dropped_2strikes": 7,
   "per_source": {
     "Guovin": {
       "total": 1619,
       "unique": 1535,
-      "passed": 147
+      "passed": 144
     },
     "zbds": {
       "total": 516,
       "unique": 330,
-      "passed": 140
+      "passed": 137
     },
     "iptv-org-cn": {
       "total": 149,
