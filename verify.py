@@ -188,6 +188,153 @@ def parse_m3u(text, src):
     return out
 
 
+# —— 名单整理：统一分类 / 组内排序 / 同名去重（借鉴收音机的做法）——
+import re
+
+GROUPS = ["央视", "卫视", "港澳台", "地方台", "海外", "其他"]
+WS_ORDER = ["湖南", "东方", "浙江", "江苏", "北京", "安徽", "天津", "深圳",
+            "重庆", "山东", "河南", "湖北", "四川", "江西", "广东", "河北",
+            "辽宁", "东南", "贵州", "云南", "广西", "陕西", "山西", "吉林",
+            "黑龙江", "海南", "内蒙古", "宁夏", "青海", "甘肃", "新疆",
+            "西藏", "海峡", "兵团", "延边", "厦门", "三沙"]
+WS_KIDS = ("卡酷", "炫动卡通", "金鹰卡通", "嘉佳卡通", "优漫卡通", "哈哈炫动")
+HMT_KEYS = ("凤凰", "翡翠", "明珠", "香港", "澳门", "澳视", "澳亚", "民视",
+            "中视", "华视", "台视", "公视", "东森", "中天", "三立", "纬来",
+            "星卫", "TVB", "有线电视", "人间卫视", "大爱", "好消息")
+PROVINCES = ["北京", "天津", "河北", "山西", "内蒙古", "辽宁", "吉林", "黑龙江",
+             "上海", "江苏", "浙江", "安徽", "福建", "江西", "山东", "河南",
+             "湖北", "湖南", "广东", "广西", "海南", "重庆", "四川", "贵州",
+             "云南", "西藏", "陕西", "甘肃", "青海", "宁夏", "新疆"]
+_CITY_SPEC = """
+江苏:南京 苏州 无锡 常州 徐州 南通 扬州 盐城 淮安 连云港 泰州 宿迁 镇江
+浙江:杭州 宁波 温州 嘉兴 湖州 绍兴 金华 台州 丽水 衢州 舟山
+安徽:合肥 芜湖 蚌埠 阜阳 亳州 宿州 淮南 滁州 六安 马鞍山 淮北 安庆 黄山
+福建:福州 厦门 泉州 漳州 莆田 龙岩 三明 南平 宁德
+江西:南昌 赣州 九江 上饶 宜春 吉安 抚州 景德镇 萍乡 新余 鹰潭
+山东:济南 青岛 烟台 潍坊 临沂 济宁 菏泽 枣庄 滨州 东营 威海 日照 聊城 德州 泰安 淄博
+河南:郑州 开封 洛阳 南阳 新乡 商丘 周口 驻马店 信阳 安阳 许昌 平顶山 焦作 鹤壁 三门峡 漯河 濮阳
+湖北:武汉 宜昌 襄阳 十堰 黄石 荆州 荆门 鄂州 孝感 黄冈 咸宁 随州 恩施
+湖南:长沙 株洲 湘潭 衡阳 岳阳 常德 益阳 郴州 永州 邵阳 张家界 怀化 娄底 湘西
+广东:广州 深圳 珠海 汕头 佛山 东莞 中山 江门 湛江 茂名 惠州 梅州 汕尾 河源 阳江 清远 潮州 揭阳 云浮 韶关 肇庆
+广西:南宁 柳州 桂林 梧州 北海 玉林 百色 钦州 贵港 贺州 河池 来宾 崇左 防城港
+海南:海口 三亚 儋州
+四川:成都 自贡 攀枝花 泸州 德阳 绵阳 广元 遂宁 内江 南充 乐山 宜宾 广安 达州 眉山 雅安 巴中 资阳 阿坝 甘孜 凉山
+贵州:贵阳 遵义 安顺 铜仁 毕节 六盘水 黔东南 黔南 黔西南
+云南:昆明 曲靖 玉溪 保山 昭通 丽江 普洱 临沧 楚雄 红河 文山 大理 德宏 怒江 迪庆 西双版纳
+西藏:拉萨 昌都 林芝 山南 那曲 阿里 日喀则
+陕西:西安 铜川 宝鸡 咸阳 渭南 延安 汉中 榆林 安康 商洛
+甘肃:兰州 嘉峪关 金昌 白银 天水 武威 张掖 平凉 酒泉 庆阳 定西 陇南 临夏 甘南
+青海:西宁 海东 海北 黄南 果洛 玉树 海西
+宁夏:银川 石嘴山 吴忠 固原 中卫
+新疆:乌鲁木齐 克拉玛依 吐鲁番 哈密 昌吉 博尔塔拉 巴音郭楞 阿克苏 克孜勒苏 喀什 和田 伊犁 塔城 阿勒泰 石河子
+河北:石家庄 唐山 秦皇岛 邯郸 邢台 保定 张家口 承德 沧州 廊坊 衡水
+山西:太原 大同 阳泉 长治 晋城 朔州 晋中 运城 忻州 临汾 吕梁
+内蒙古:呼和浩特 包头 乌海 赤峰 通辽 鄂尔多斯 呼伦贝尔 巴彦淖尔 乌兰察布 兴安 锡林郭勒 阿拉善
+辽宁:沈阳 大连 鞍山 抚顺 本溪 丹东 锦州 营口 阜新 辽阳 盘锦 铁岭 朝阳 葫芦岛
+吉林:长春 吉林 四平 辽源 通化 白山 松原 白城
+黑龙江:哈尔滨 齐齐哈尔 鸡西 鹤岗 双鸭山 大庆 伊春 佳木斯 七台河 牡丹江 黑河 绥化 大兴安岭
+"""
+CITY2PROV = {}
+for _line in _CITY_SPEC.strip().splitlines():
+    _p, _cs = _line.split(":")
+    for _c in _cs.split():
+        CITY2PROV[_c] = _p
+
+
+def classify(name):
+    n = name.upper().replace(" ", "")
+    if "CCTV" in n or "CGTN" in n or "央视" in name or \
+            "中国教育电视台" in name or n.startswith("CETV"):
+        return "央视"
+    if any(k in name or k in n for k in HMT_KEYS):
+        return "港澳台"
+    if "卫视" in name or any(k in name for k in WS_KIDS):
+        return "卫视"
+    if re.search(r"[\u4e00-\u9fff]", name):
+        if "轮播" in name or "点播" in name:
+            return "其他"
+        return "地方台"
+    return "海外"
+
+
+def province_of(name):
+    if "海南州" in name:
+        return "青海"
+    for p in PROVINCES:
+        if name.startswith(p):
+            return p
+    for city, prov in CITY2PROV.items():
+        if name.startswith(city):
+            return prov
+    return ""
+
+
+def sort_key(ch):
+    g = classify(ch["name"])
+    n = ch["name"]
+    gi = GROUPS.index(g)
+    if g == "央视":
+        m = re.search(r"CCTV[- ]?(\d+)\s*(\+)?", n.upper())
+        if m:
+            sub = (0, int(m.group(1)), 1 if m.group(2) else 0)
+        elif "CGTN" in n.upper():
+            sub = (1, 0, 0)
+        else:
+            sub = (2, 0, 0)
+        return (gi, sub, n)
+    if g == "卫视":
+        r = next((i for i, w in enumerate(WS_ORDER) if w + "卫视" in n),
+                 len(WS_ORDER))
+        return (gi, (r, 0, 0), n)
+    if g == "地方台":
+        p = province_of(n)
+        pr = PROVINCES.index(p) if p in PROVINCES else len(PROVINCES)
+        return (gi, (pr, 0, 0), n)
+    return (gi, (0, 0, 0), n)
+
+
+def norm_name(name):
+    n = name.upper()
+    n = re.sub(r"[\s·\-—_()（）\[\]【】]", "", n)
+    while True:
+        n2 = re.sub(r"(2160P|1080P|1080I|720P|720I|576P|576I|480P|480I|"
+                    r"4K|8K|FHD|UHD|HD|高清|超清|标清)$", "", n)
+        if n2 == n:
+            return n
+        n = n2
+
+
+def _res_rank(name):
+    n = name.upper()
+    for i, k in enumerate(("2160", "4K", "1080", "720", "576", "480")):
+        if k in n:
+            return i
+    return 9
+
+
+def dedupe(pairs):
+    """pairs: [(ch, tier)]。同名只留最好的一条：严标准 > 代理；https > http；高清优先。"""
+    best = {}
+    for ch, tier in pairs:
+        key = norm_name(ch["name"])
+        rank = (0 if tier == "strict" else 1,
+                0 if ch["url"].startswith("https") else 1,
+                _res_rank(ch["name"]))
+        if key not in best or rank < best[key][0]:
+            best[key] = (rank, ch)
+    return [v[1] for v in best.values()]
+
+
+def with_group(extinf, group):
+    if 'group-title="' in extinf:
+        return re.sub(r'group-title="[^"]*"',
+                      f'group-title="{group}"', extinf, count=1)
+    if extinf.startswith("#EXTINF:-1"):
+        return extinf.replace("#EXTINF:-1",
+                              f'#EXTINF:-1 group-title="{group}"', 1)
+    return extinf
+
+
 def main():
     all_ch, seen = [], set()
     per_src = {}
@@ -225,22 +372,32 @@ def main():
     print(f"全验证 {len(passed)} 条，代理版另 {len(proxy_only)} 条"
           f"（合计 {len(all_pass)}/{len(all_ch)}）", file=sys.stderr)
 
-    passed.sort(key=lambda c: (c["group"], c["name"]))
-    all_pass.sort(key=lambda c: (c["group"], c["name"]))
+    # 统一分类、去重、排序（group-title 重写为统一分类）
+    passed = sorted(dedupe([(c, "strict") for c in passed]), key=sort_key)
+    all_pass = sorted(dedupe([(c, "strict") for c in passed] +
+                             [(c, "proxy") for c in proxy_only]), key=sort_key)
+    from collections import Counter
+    grp_counts = dict(Counter(classify(c["name"]) for c in all_pass))
+    print(f"去重后：全验证 {len(passed)} 条，代理版 {len(all_pass)} 条；"
+          f"代理版分类 {grp_counts}", file=sys.stderr)
+
     os.makedirs("out", exist_ok=True)
     with open("out/verified.m3u", "w", encoding="utf-8") as f:
         f.write('#EXTM3U x-tvg-url=""\n')
         for ch in passed:
-            f.write(ch["extinf"] + "\n" + ch["url"] + "\n")
+            f.write(with_group(ch["extinf"], classify(ch["name"]))
+                    + "\n" + ch["url"] + "\n")
     with open("out/proxy.m3u", "w", encoding="utf-8") as f:
         f.write('#EXTM3U x-tvg-url=""\n')
         for ch in all_pass:
-            f.write(ch["extinf"] + "\n" + ch["url"] + "\n")
+            f.write(with_group(ch["extinf"], classify(ch["name"]))
+                    + "\n" + ch["url"] + "\n")
     stats = {
         "total_checked": len(all_ch),
         "total_passed": len(passed),
         "proxy_total": len(all_pass),
-        "proxy_only": len(proxy_only),
+        "proxy_only": len(all_pass) - len(passed),
+        "groups": grp_counts,
         "per_source": per_src,
     }
     with open("out/stats.json", "w", encoding="utf-8") as f:
